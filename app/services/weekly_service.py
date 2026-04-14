@@ -10,13 +10,25 @@ class WeeklyContentService:
         self.ai_service = AIService()
         self.email_service = EmailService()
 
-    def send_cigar_weekly_email(self, email_to: str, count: int = 4) -> dict:
-        generated = self.ai_service.generate_post_batch(
+    def generate_cigar_content(self, count: int = 4) -> GeneratePostsResponse:
+        return self.ai_service.generate_post_batch(
             idea="A week's worth of reflective premium cigar LinkedIn content",
             topic="Cigars, reflection, brotherhood, slowing down, subtle faith",
             brand="cigar",
             count=count,
         )
+
+    def generate_personal_content(self) -> list[GeneratedPost]:
+        return [
+            self._generate_single_personal_post("Product Leadership", "A sharp product leadership lesson from real operating experience", "Monday"),
+            self._generate_single_personal_post("AI in Product & Technology", "A strong opinion on how AI is changing product and execution", "Tuesday"),
+            self._generate_single_personal_post("Faith", "A grounded faith reflection for leaders that is thoughtful but not preachy", "Wednesday"),
+            self._generate_single_personal_post("Lifestyle", "A reflection on lifestyle, cigars, brotherhood, or stillness that fits LinkedIn", "Thursday"),
+            self._generate_single_personal_post("Personal / Leadership", "A real leadership or growth lesson learned in the trenches", "Friday"),
+        ]
+
+    def send_cigar_weekly_email(self, email_to: str, count: int = 4) -> dict:
+        generated = self.generate_cigar_content(count)
         subject = "Your Weekly LinkedIn Posts – Cigar Edition"
         html_body = self._render_cigar_html(generated)
         text_body = self._render_cigar_text(generated)
@@ -24,18 +36,29 @@ class WeeklyContentService:
         return {"subject": subject, "posts": generated.posts, "email_result": email_result}
 
     def send_personal_weekly_email(self, email_to: str) -> dict:
-        posts = [
-            self._generate_single_personal_post("Product Leadership", "A sharp product leadership lesson from real operating experience", "Monday"),
-            self._generate_single_personal_post("AI in Product & Technology", "A strong opinion on how AI is changing product and execution", "Tuesday"),
-            self._generate_single_personal_post("Faith", "A grounded faith reflection for leaders that is thoughtful but not preachy", "Wednesday"),
-            self._generate_single_personal_post("Lifestyle", "A reflection on lifestyle, cigars, brotherhood, or stillness that fits LinkedIn", "Thursday"),
-            self._generate_single_personal_post("Personal / Leadership", "A real leadership or growth lesson learned in the trenches", "Friday"),
-        ]
+        posts = self.generate_personal_content()
         subject = "Your Weekly LinkedIn Posts – Personal Brand"
         html_body = self._render_personal_html(posts)
         text_body = self._render_personal_text(posts)
         email_result = self.email_service.send_email(email_to, subject, html_body, text_body)
         return {"subject": subject, "posts": posts, "email_result": email_result}
+
+    def send_combined_weekly_email(self, email_to: str, cigar_posts: GeneratePostsResponse, personal_posts: list[GeneratedPost]) -> dict:
+        subject = "Your Weekly LinkedIn Posts – Full Digest"
+        cigar_html = self._render_cigar_html(cigar_posts)
+        personal_html = self._render_personal_html(personal_posts)
+        html_body = f"""
+        <html>
+          <body style="font-family: Arial, sans-serif; color: #1f2937; max-width: 720px; margin: 0 auto;">
+            {cigar_html}
+            <hr style="margin: 40px 0; border: 1px solid #e5e7eb;">
+            {personal_html}
+          </body>
+        </html>
+        """.strip()
+        text_body = self._render_cigar_text(cigar_posts) + "\n\n---\n\n" + self._render_personal_text(personal_posts)
+        email_result = self.email_service.send_email(email_to, subject, html_body, text_body)
+        return {"email_result": email_result}
 
     def _generate_single_personal_post(self, topic: str, idea: str, day: str) -> GeneratedPost:
         generated = self.ai_service.generate_post_batch(
