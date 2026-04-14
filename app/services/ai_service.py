@@ -3,8 +3,7 @@ from openai import OpenAI
 
 from app.core.config import get_settings
 from app.core.prompts import CIGAR_BRAND_CONTEXT, PERSONAL_BRAND_CONTEXT, VOICE_RULES
-from app.schemas.engagement import GenerateCommentsRequest, GenerateCommentsResponse, ReplySuggestion
-from app.schemas.post import GeneratePostsRequest, GeneratePostsResponse, GeneratedPost
+from app.schemas.post import GeneratePostsResponse, GeneratedPost
 
 
 class GeneratedPostPayload(BaseModel):
@@ -18,29 +17,11 @@ class GeneratedPostsPayload(BaseModel):
     posts: list[GeneratedPostPayload] = Field(min_length=1, max_length=5)
 
 
-class ReplySuggestionPayload(BaseModel):
-    source_comment: str
-    suggested_reply: str
-
-
-class EngagementPayload(BaseModel):
-    daily_comments: list[str] = Field(min_length=5, max_length=5)
-    reply_suggestions: list[ReplySuggestionPayload]
-
-
 class AIService:
     def __init__(self) -> None:
         settings = get_settings()
         self.settings = settings
         self.client = OpenAI(api_key=settings.openai_api_key)
-
-    def generate_posts(self, request: GeneratePostsRequest) -> GeneratePostsResponse:
-        return self.generate_post_batch(
-            idea=request.idea,
-            topic=request.topic,
-            brand=request.brand,
-            count=request.count,
-        )
 
     def generate_post_batch(self, idea: str, topic: str, brand: str, count: int) -> GeneratePostsResponse:
         brand_context = PERSONAL_BRAND_CONTEXT if brand == "personal" else CIGAR_BRAND_CONTEXT
@@ -97,46 +78,4 @@ class AIService:
                 )
                 for item in payload.posts
             ]
-        )
-
-    def generate_comments(self, request: GenerateCommentsRequest) -> GenerateCommentsResponse:
-        comment_context = "\n".join(f"- {comment}" for comment in request.incoming_comments) or "- No incoming comments yet"
-        prompt = f"""
-        Generate engagement assets for LinkedIn.
-
-        Original post:
-        {request.post_content}
-
-        Incoming comments:
-        {comment_context}
-
-        Requirements:
-        - Generate 5 daily comments to leave on other LinkedIn posts.
-        - Each daily comment should feel thoughtful, natural, and concise.
-        - Generate suggested replies for the provided incoming comments.
-        - Replies should feel warm, sharp, and human.
-        - Avoid sounding robotic or overly polished.
-        """.strip()
-
-        parsed = self.client.responses.parse(
-            model=self.settings.openai_model,
-            input=[
-                {"role": "system", "content": VOICE_RULES},
-                {"role": "user", "content": prompt},
-            ],
-            text_format=EngagementPayload,
-        )
-        payload = parsed.output_parsed
-        if payload is None:
-            raise ValueError("Model returned no structured content for engagement")
-
-        return GenerateCommentsResponse(
-            daily_comments=payload.daily_comments,
-            reply_suggestions=[
-                ReplySuggestion(
-                    source_comment=item.source_comment,
-                    suggested_reply=item.suggested_reply,
-                )
-                for item in payload.reply_suggestions
-            ],
         )
