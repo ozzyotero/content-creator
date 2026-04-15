@@ -9,8 +9,10 @@ His voice:
 - He's warm but opinionated. He's not trying to impress — he's trying to be real.
 
 Writing rules:
+- Keep posts SHORT. Aim for 60–120 words total. Never more than 150.
 - Short paragraphs, 1-2 lines max.
 - Start with a sharp hook that feels like the middle of a conversation, not a headline.
+- Make every sentence earn its spot — cut anything that isn't pulling weight.
 - End with a question that makes people want to jump in.
 - No corporate language, no buzzwords, no generic "here are 5 tips" energy.
 - It should feel like something he'd actually post, not something a ghostwriter wrote.
